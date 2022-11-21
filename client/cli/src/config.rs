@@ -365,6 +365,11 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 		Ok(None)
 	}
 
+	/// Use random port if port configured for Websocket or HTTP is already in use
+	fn rpc_allow_fallback_to_random_port(&self) -> Result<bool> {
+		Ok(true)
+	}
+
 	/// Get maximum WS output buffer capacity.
 	fn ws_max_out_buffer_capacity(&self) -> Result<Option<usize>> {
 		Ok(None)
@@ -544,6 +549,7 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 			rpc_max_response_size: self.rpc_max_response_size()?,
 			rpc_id_provider: None,
 			rpc_max_subs_per_conn: self.rpc_max_subscriptions_per_connection()?,
+			rpc_allow_fallback_to_random_port: self.rpc_allow_fallback_to_random_port()?,
 			ws_max_out_buffer_capacity: self.ws_max_out_buffer_capacity()?,
 			prometheus_config: self
 				.prometheus_config(DCV::prometheus_listen_port(), &chain_spec)?,

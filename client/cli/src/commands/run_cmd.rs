@@ -116,6 +116,11 @@ pub struct RunCmd {
 	#[clap(long)]
 	pub rpc_max_subscriptions_per_connection: Option<usize>,
 
+	/// Use random port if port configured for Websocket or HTTP is already in use
+	/// Default is true.
+	#[clap(long)]
+	pub rpc_allow_fallback_to_random_port: Option<bool>,
+
 	/// Expose Prometheus exporter on all interfaces.
 	///
 	/// Default is local.
@@ -463,6 +468,10 @@ impl CliConfiguration for RunCmd {
 
 	fn rpc_max_subscriptions_per_connection(&self) -> Result<Option<usize>> {
 		Ok(self.rpc_max_subscriptions_per_connection)
+	}
+
+	fn rpc_allow_fallback_to_random_port(&self) -> Result<bool> {
+		Ok(self.rpc_allow_fallback_to_random_port.unwrap_or(true))
 	}
 
 	fn ws_max_out_buffer_capacity(&self) -> Result<Option<usize>> {

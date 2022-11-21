@@ -113,6 +113,8 @@ pub struct Configuration {
 	///
 	/// Default: 1024.
 	pub rpc_max_subs_per_conn: Option<usize>,
+	/// Use random port if port configured for Websocket or HTTP is already in use
+	pub rpc_allow_fallback_to_random_port: bool,
 	/// Maximum size of the output buffer capacity for websocket connections.
 	pub ws_max_out_buffer_capacity: Option<usize>,
 	/// Prometheus endpoint configuration. `None` if disabled.

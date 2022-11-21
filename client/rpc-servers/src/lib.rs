@@ -79,7 +79,7 @@ impl WsConfig {
 
 /// Start HTTP server listening on given address.
 pub async fn start_http<M: Send + Sync + 'static>(
-	addrs: [SocketAddr; 2],
+	addrs: &[SocketAddr],
 	cors: Option<&Vec<String>>,
 	max_payload_in_mb: Option<usize>,
 	max_payload_out_mb: Option<usize>,
@@ -95,7 +95,7 @@ pub async fn start_http<M: Send + Sync + 'static>(
 	if let Some(cors) = cors {
 		// Whitelist listening address.
 		// NOTE: set_allowed_hosts will whitelist both ports but only one will used.
-		acl = acl.set_allowed_hosts(format_allowed_hosts(&addrs[..]))?;
+		acl = acl.set_allowed_hosts(format_allowed_hosts(addrs))?;
 		acl = acl.set_allowed_origins(cors)?;
 	};
 
@@ -107,30 +107,40 @@ pub async fn start_http<M: Send + Sync + 'static>(
 		.custom_tokio_runtime(rt);
 
 	let rpc_api = build_rpc_api(rpc_api);
-	let (handle, addr) = if let Some(metrics) = metrics {
+	let server_start_result = if let Some(metrics) = metrics {
 		let middleware = RpcMiddleware::new(metrics, "http".into());
 		let builder = builder.set_middleware(middleware);
-		let server = builder.build(&addrs[..]).await?;
-		let addr = server.local_addr();
-		(server.start(rpc_api)?, addr)
+		builder.build(addrs).await.and_then(|server| {
+			let addr = server.local_addr();
+			Ok((server.start(rpc_api)?, addr))
+		})
 	} else {
-		let server = builder.build(&addrs[..]).await?;
-		let addr = server.local_addr();
-		(server.start(rpc_api)?, addr)
+		builder.build(addrs).await.and_then(|server| {
+			let addr = server.local_addr();
+			Ok((server.start(rpc_api)?, addr))
+		})
 	};
 
-	log::info!(
-		"Running JSON-RPC HTTP server: addr={}, allowed origins={:?}",
-		addr.map_or_else(|_| "unknown".to_string(), |a| a.to_string()),
-		cors
-	);
+	match server_start_result {
+		Ok((handle, addr)) => {
+			log::info!(
+				"Running JSON-RPC HTTP server: addr={}, allowed origins={:?}",
+				addr.map_or_else(|_| "unknown".to_string(), |a| a.to_string()),
+				cors
+			);
 
-	Ok(handle)
+			Ok(handle)
+		},
+		Err(error) => {
+			log::info!("Error on starting JSON-RPC HTTP server: {}", error);
+			Err(error.into())
+		},
+	}
 }
 
 /// Start WS server listening on given address.
 pub async fn start_ws<M: Send + Sync + 'static>(
-	addrs: [SocketAddr; 2],
+	addrs: &[SocketAddr],
 	cors: Option<&Vec<String>>,
 	ws_config: WsConfig,
 	metrics: Option<RpcMetrics>,
@@ -146,7 +156,7 @@ pub async fn start_ws<M: Send + Sync + 'static>(
 	if let Some(cors) = cors {
 		// Whitelist listening address.
 		// NOTE: set_allowed_hosts will whitelist both ports but only one will used.
-		acl = acl.set_allowed_hosts(format_allowed_hosts(&addrs[..]))?;
+		acl = acl.set_allowed_hosts(format_allowed_hosts(addrs))?;
 		acl = acl.set_allowed_origins(cors)?;
 	};
 
@@ -166,25 +176,35 @@ pub async fn start_ws<M: Send + Sync + 'static>(
 	};
 
 	let rpc_api = build_rpc_api(rpc_api);
-	let (handle, addr) = if let Some(metrics) = metrics {
+	let server_start_result = if let Some(metrics) = metrics {
 		let middleware = RpcMiddleware::new(metrics, "ws".into());
 		let builder = builder.set_middleware(middleware);
-		let server = builder.build(&addrs[..]).await?;
-		let addr = server.local_addr();
-		(server.start(rpc_api)?, addr)
+		builder.build(addrs).await.and_then(|server| {
+			let addr = server.local_addr();
+			Ok((server.start(rpc_api)?, addr))
+		})
 	} else {
-		let server = builder.build(&addrs[..]).await?;
-		let addr = server.local_addr();
-		(server.start(rpc_api)?, addr)
+		builder.build(addrs).await.and_then(|server| {
+			let addr = server.local_addr();
+			Ok((server.start(rpc_api)?, addr))
+		})
 	};
 
-	log::info!(
-		"Running JSON-RPC WS server: addr={}, allowed origins={:?}",
-		addr.map_or_else(|_| "unknown".to_string(), |a| a.to_string()),
-		cors
-	);
+	match server_start_result {
+		Ok((handle, addr)) => {
+			log::info!(
+				"Running JSON-RPC WS server: addr={}, allowed origins={:?}",
+				addr.map_or_else(|_| "unknown".to_string(), |a| a.to_string()),
+				cors
+			);
 
-	Ok(handle)
+			Ok(handle)
+		},
+		Err(error) => {
+			log::info!("Error on starting JSON-RPC WS server: {}", error);
+			Err(error.into())
+		},
+	}
 }
 
 fn format_allowed_hosts(addrs: &[SocketAddr]) -> Vec<String> {

@@ -345,16 +345,20 @@ where
 	let ws_addr = config
 		.rpc_ws
 		.unwrap_or_else(|| "127.0.0.1:9944".parse().expect("valid sockaddr; qed"));
-	let ws_addr2 = random_port(ws_addr);
+	let ws_addrs = [ws_addr, random_port(ws_addr)];
+	let ws_addrs =
+		if config.rpc_allow_fallback_to_random_port { &ws_addrs[..] } else { &ws_addrs[..1] };
+
 	let http_addr = config
 		.rpc_http
 		.unwrap_or_else(|| "127.0.0.1:9933".parse().expect("valid sockaddr; qed"));
-	let http_addr2 = random_port(http_addr);
+	let http_addrs = [http_addr, random_port(http_addr)];
+	let http_addrs =
+		if config.rpc_allow_fallback_to_random_port { &http_addrs[..] } else { &http_addrs[..1] };
 
 	let metrics = sc_rpc_server::RpcMetrics::new(config.prometheus_registry())?;
-
 	let http_fut = sc_rpc_server::start_http(
-		[http_addr, http_addr2],
+		http_addrs,
 		config.rpc_cors.as_ref(),
 		max_request_size,
 		http_max_response_size,
@@ -371,7 +375,7 @@ where
 	};
 
 	let ws_fut = sc_rpc_server::start_ws(
-		[ws_addr, ws_addr2],
+		ws_addrs,
 		config.rpc_cors.as_ref(),
 		ws_config,
 		metrics,
